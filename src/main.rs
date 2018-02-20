@@ -5,6 +5,7 @@ extern crate image;
 
 use glium::{glutin,Surface};
 use std::io::Cursor;
+use std::f64::consts::PI;
 
 #[derive(Copy,Clone)]
 struct Vertex {
@@ -21,7 +22,7 @@ fn mat4_ident() -> [[f32 ; 4]; 4] {
     ]
 }
 
-fn mat4_add(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+fn mat4_mul(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let mut newmat = [[0.0; 4]; 4];
 
     for i in 0..4 {
@@ -34,6 +35,96 @@ fn mat4_add(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     }
 
     newmat
+}
+
+fn mat4_translate(x: f32, y: f32, z: f32) -> [[f32; 4]; 4] {
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [  x,   y,   z, 1.0],
+    ]
+}
+
+enum Angle {
+    Deg(f32),
+    Rad(f32)
+}
+
+fn mat4_rotate(angle: Angle, dir: [f32; 3]) -> [[f32; 4]; 4] {
+    let angle_rad = match angle {
+        Angle::Rad(r) => r,
+        Angle::Deg(d) => PI as f32 * d / 180.0
+    };
+
+    let mut s = angle_rad.sin();
+    let c = angle_rad.cos();
+
+
+    let mut x = dir[0];
+    let mut y = dir[1];
+    let mut z = dir[2];
+
+
+    if x == 1.0 && y == 0.0 && z == 0.0 {
+        if x < 0.0 {
+            s = -s;
+        }
+
+        [
+            [1.0,0.0,0.0,0.0],
+            [0.0,  c, -s,0.0],
+            [0.0,  s,  c,0.0],
+            [0.0,0.0,0.0,1.0],
+        ]
+    } else if x == 0.0 && y == 1.0 && z == 0.0 {
+        if y < 0.0 {
+            s = -s;
+        }
+
+        [
+            [  c,0.0,  s,0.0],
+            [0.0,1.0,0.0,0.0],
+            [ -s,0.0,  c,0.0],
+            [0.0,0.0,0.0,1.0],
+        ]
+    } else if x == 0.0 && y == 0.0 && z == 1.0 {
+        if z < 0.0 {
+            s = -s;
+        }
+
+        [
+            [  c, -s,0.0,0.0],
+            [  s,  c,0.0,0.0],
+            [0.0,0.0,1.0,0.0],
+            [0.0,0.0,0.0,1.0],
+        ]
+    } else {
+        let len = (x*x + y*y + z*z).sqrt();
+
+        if len != 1.0 {
+            let rlen = 1.0 / len;
+            x *= rlen;
+            y *= rlen;
+            z *= rlen;
+        }
+
+        let nc = 1.0 - c;
+        let xy = x*y;
+        let yz = y*z;
+        let zx = z*x;
+
+        let xs = x * s;
+        let ys = y * s;
+        let zs = z * s;
+
+        [
+            [x*x*nc +  c, xy  * nc + zs, zx * nc - ys, 0.0],
+            [xy *nc - zs, y*y * nc +  c, yz * nc + xs, 0.0],
+            [zx *nc + ys, yz  * nc + xs, z*z* nc -  c, 0.0],
+            [0.0,0.0,0.0,1.0],
+        ]
+    }
 }
 
 fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
@@ -49,25 +140,6 @@ fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
 }
 
 fn main() {
-
-    // let tst1 = mat4_ident();
-    let tst1 = [
-        [1.0, 0.0, 0.0, 1.0],
-        [0.0, 1.0, 0.0, 1.0],
-        [0.0, 0.0, 1.0, 1.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ];
-    let tst2 = [
-        [0.0, 1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ];
-    let tst3 = mat4_add(tst1,tst2);
-
-    println!("Test add two ident mat4: {:?}", tst3);
-
-    return;
 
     implement_vertex!(Vertex, position, uvs);
 
@@ -141,15 +213,13 @@ void main() {
             t = 0.0;
         }
 
-        let mat = mat4_ident();
+        // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
+        let mat = mat4_mul(
+            mat4_translate(-0.5,-0.5,0.0), 
+            mat4_rotate(Angle::Rad(t), [0.0,0.0,1.0]));
 
         let uniforms = uniform! {
-            matrix: [
-                [t.cos(), t.sin(), 0.0, 0.0],
-                [-t.sin(), t.cos(), 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [ 0.0 , 0.0, 0.0, 1.0f32],
-            ],
+            matrix: mat,
             tex: &texture
         };
         
