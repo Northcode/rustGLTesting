@@ -4,7 +4,6 @@ extern crate glium;
 extern crate image;
 
 mod linalg;
-mod test;
 
 use glium::{glutin,Surface};
 use std::io::Cursor;
