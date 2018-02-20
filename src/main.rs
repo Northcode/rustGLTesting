@@ -37,7 +37,10 @@ fn mat4_mul(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     newmat
 }
 
-fn mat4_translate(x: f32, y: f32, z: f32) -> [[f32; 4]; 4] {
+fn mat4_translate(amount: [f32; 3]) -> [[f32; 4]; 4] {
+    let x = amount[0];
+    let y = amount[1];
+    let z = amount[2];
     [
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
@@ -126,6 +129,7 @@ fn mat4_rotate(angle: Angle, dir: [f32; 3]) -> [[f32; 4]; 4] {
         ]
     }
 }
+
 
 fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
     let square = vec![
