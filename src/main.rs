@@ -7,13 +7,23 @@ use glium::{glutin,Surface};
 use std::io::Cursor;
 use std::f64::consts::PI;
 
-#[derive(Copy,Clone)]
-struct Vertex {
-    position: [ f32; 3 ],
-    uvs: [ f32; 2 ],
+type Matrix4 = [[f32; 4]; 4];
+type Vector3 = [f32; 3];
+type Vector2 = [f32; 2];
+
+enum Angle {
+    Deg(f32),
+    Rad(f32)
 }
 
-fn mat4_ident() -> [[f32 ; 4]; 4] {
+
+#[derive(Copy,Clone)]
+struct Vertex {
+    position: Vector3,
+    uvs: Vector2,
+}
+
+fn mat4_ident() -> Matrix4 {
     [
         [1.0,0.0,0.0,0.0],
         [0.0,1.0,0.0,0.0],
@@ -22,7 +32,7 @@ fn mat4_ident() -> [[f32 ; 4]; 4] {
     ]
 }
 
-fn mat4_mul(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+fn mat4_mul(a: Matrix4, b: Matrix4) -> Matrix4 {
     let mut newmat = [[0.0; 4]; 4];
 
     for i in 0..4 {
@@ -37,7 +47,16 @@ fn mat4_mul(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     newmat
 }
 
-fn mat4_translate(amount: [f32; 3]) -> [[f32; 4]; 4] {
+fn mat4_vec_mul(mats: Vec<Matrix4>) -> Matrix4 {
+    let mut result = mat4_ident();
+    for m in mats {
+        result = mat4_mul(result, m);
+    }
+    result
+    
+}
+
+fn mat4_translate(amount: Vector3) -> Matrix4 {
     let x = amount[0];
     let y = amount[1];
     let z = amount[2];
@@ -49,12 +68,7 @@ fn mat4_translate(amount: [f32; 3]) -> [[f32; 4]; 4] {
     ]
 }
 
-enum Angle {
-    Deg(f32),
-    Rad(f32)
-}
-
-fn mat4_rotate(angle: Angle, dir: [f32; 3]) -> [[f32; 4]; 4] {
+fn mat4_rotate(angle: Angle, dir: Vector3) -> Matrix4 {
     let angle_rad = match angle {
         Angle::Rad(r) => r,
         Angle::Deg(d) => PI as f32 * d / 180.0
@@ -130,6 +144,18 @@ fn mat4_rotate(angle: Angle, dir: [f32; 3]) -> [[f32; 4]; 4] {
     }
 }
 
+fn mat4_scale(amount: Vector3) -> Matrix4 {
+    let x = amount[0];
+    let y = amount[1];
+    let z = amount[2];
+    [
+        [  x, 0.0, 0.0, 0.0],
+        [0.0,   y, 0.0, 0.0],
+        [0.0, 0.0,   z, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
 
 fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
     let square = vec![
@@ -141,6 +167,18 @@ fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
         Vertex { position: [x,y,z], uvs: [1.0,1.0] },
     ];
     square
+}
+
+fn transpose_vertex(vert: &mut Vertex, amnt: Vector3) {
+    let x = vert.position[0];
+    let y = vert.position[1];
+    let z = vert.position[2];
+
+    let ax = amnt[0];
+    let ay = amnt[1];
+    let az = amnt[2];
+
+    vert.position = [x + ax, y + ay, z + az];
 }
 
 fn main() {
@@ -157,7 +195,12 @@ fn main() {
 
     let display = glium::Display::new(window, context, &event_loop).unwrap();
 
-    let shape = make_square(1.0,1.0,0.0);
+    let mut shape = make_square(1.0,1.0,0.0);
+    let mut square2 = make_square(0.5,0.5,1.0);
+    for mut tex in &mut square2 {
+        transpose_vertex(tex, [-0.5, -0.5, 0.0]);
+    }
+    shape.append(&mut square2);
 
     let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -218,9 +261,10 @@ void main() {
         }
 
         // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
-        let mat = mat4_mul(
-            mat4_translate(-0.5,-0.5,0.0), 
-            mat4_rotate(Angle::Rad(t), [0.0,0.0,1.0]));
+        let mat = mat4_vec_mul(vec![
+            mat4_translate([-0.5,-0.5,0.0]),
+            mat4_scale([0.5,0.5,0.5]),
+            mat4_rotate(Angle::Rad(t), [0.0,0.0,1.0])]);
 
         let uniforms = uniform! {
             matrix: mat,
