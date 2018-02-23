@@ -145,4 +145,17 @@ pub mod matrix4 {
             [0.0, 0.0, 0.0, 1.0],
         ]
     }
+
+
+    pub fn mat4_mul_vec3(mat: Matrix4, vec: Vector3) -> Vector3 {
+        let x = vec[0];
+        let y = vec[1];
+        let z = vec[2];
+
+        [
+            x * mat[0][0] + y * mat[1][0] + z * mat[2][0] + mat[3][0],
+            x * mat[0][1] + y * mat[1][1] + z * mat[2][1] + mat[3][1],
+            x * mat[0][2] + y * mat[1][2] + z * mat[2][2] + mat[3][2],
+        ]
+    }
 }
