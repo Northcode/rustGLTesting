@@ -80,11 +80,35 @@ fn make_cube(x: f32, y: f32, z: f32) -> Vec<Vertex> {
         transform_vertecies(mat4_rotate(Angle::Deg(-90.0),[0.0,1.0,0.0]), &mut square);
         square
     };
-    
+
+    let mut back = {
+        let mut square = make_square_centered(z,y);
+        transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
+        transform_vertecies(mat4_rotate(Angle::Deg(180.0),[0.0,1.0,0.0]), &mut square);
+        square
+    };
+
+
+    let mut top = {
+        let mut square = make_square_centered(z,y);
+        transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
+        transform_vertecies(mat4_rotate(Angle::Deg(90.0),[1.0,0.0,0.0]), &mut square);
+        square
+    };
+
+    let mut bottom = {
+        let mut square = make_square_centered(z,y);
+        transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
+        transform_vertecies(mat4_rotate(Angle::Deg(-90.0),[1.0,0.0,0.0]), &mut square);
+        square
+    };
 
     cube.append(&mut front);
     cube.append(&mut left);
     cube.append(&mut right);
+    cube.append(&mut back);
+    cube.append(&mut top);
+    cube.append(&mut bottom);
 
     cube
 }
@@ -161,12 +185,13 @@ out vec4 color;
 uniform sampler2D tex;
 
 void main() {
-    color = texture(tex, v_uvs);
+    color = texture(tex, v_uvs) * vec4(pos, 1.0);
 }
 
 "#;
 
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
+
 
 
     let mut closed = false;
@@ -182,11 +207,11 @@ void main() {
 
         // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
         let mat = mat4_vec_mul(vec![
-            mat4_translate([-0.5,-0.5,0.0]),
-            mat4_scale([0.5,0.5,0.5]),
-            mat4_rotate(Angle::Rad(t), [1.0,0.0,0.0]),
             mat4_rotate(Angle::Rad(t), [0.0,1.0,0.0]),
-            mat4_rotate(Angle::Rad(t), [0.0,0.0,1.0])]);
+            mat4_rotate(Angle::Rad(t), [1.0,0.0,0.0]),
+            mat4_scale([0.5,0.5,0.5]),
+            // mat4_translate([-0.5,-0.5,0.0]),
+        ]);
 
         let uniforms = uniform! {
             matrix: mat,
