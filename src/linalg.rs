@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub type Vector3 = [f32; 3];
 pub type Vector2 = [f32; 2];
 
