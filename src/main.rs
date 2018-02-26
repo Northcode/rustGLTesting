@@ -123,7 +123,7 @@ fn main() {
 
 
 
-    let image = image::load(Cursor::new(&include_bytes!("/home/andreas/Pictures/skin.jpg")[..]), image::JPEG).unwrap().to_rgba();
+    let image = image::load(Cursor::new(&include_bytes!("../textures/skin.jpg")[..]), image::JPEG).unwrap().to_rgba();
     let image_dimensions = image.dimensions();
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
