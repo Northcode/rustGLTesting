@@ -15,30 +15,20 @@ use linalg::matrix4::*;
 struct Vertex {
     position: Vector3,
     uvs: Vector2,
+    normal: Vector3,
 }
 
 // * Vertex making functions
 
-fn make_square(x: f32, y: f32, z: f32) -> Vec<Vertex> {
-    let square = vec![
-        Vertex { position: [0.0,0.0,z], uvs: [0.0,0.0] },
-        Vertex { position: [x,0.0,z], uvs: [1.0,0.0] },
-        Vertex { position: [0.0,y,z], uvs: [0.0,1.0] },
-        Vertex { position: [0.0,y,z], uvs: [0.0,1.0] },
-        Vertex { position: [x,0.0,z], uvs: [0.0,0.0] },
-        Vertex { position: [x,y,z], uvs: [1.0,1.0] },
-    ];
-    square
-}
-
-fn make_square_centered(x: f32, y: f32) -> Vec<Vertex> {
+fn make_square(x: f32, y: f32) -> Vec<Vertex> {
+    let nz = 1.0;
     let mut square = vec![
-        Vertex { position: [0.0,0.0,0.0], uvs: [0.0,0.0] },
-        Vertex { position: [x,0.0,0.0], uvs: [1.0,0.0] },
-        Vertex { position: [0.0,y,0.0], uvs: [0.0,1.0] },
-        Vertex { position: [0.0,y,0.0], uvs: [0.0,1.0] },
-        Vertex { position: [x,0.0,0.0], uvs: [0.0,0.0] },
-        Vertex { position: [x,y,0.0], uvs: [1.0,1.0] },
+        Vertex { position: [0.0,0.0,0.0], uvs: [0.0,0.0], normal: [0.0,0.0,nz] },
+        Vertex { position: [x,0.0,0.0],   uvs: [1.0,0.0], normal: [0.0,0.0,nz] },
+        Vertex { position: [0.0,y,0.0],   uvs: [0.0,1.0], normal: [0.0,0.0,nz] },
+        Vertex { position: [0.0,y,0.0],   uvs: [0.0,1.0], normal: [0.0,0.0,nz] },
+        Vertex { position: [x,0.0,0.0],   uvs: [0.0,0.0], normal: [0.0,0.0,nz] },
+        Vertex { position: [x,y,0.0],     uvs: [1.0,1.0], normal: [0.0,0.0,nz] },
     ];
     transform_vertecies(mat4_translate([-x/2.0,-y/2.0,0.0]), &mut square);
     square
@@ -48,41 +38,36 @@ fn make_square_centered(x: f32, y: f32) -> Vec<Vertex> {
 fn transform_vertecies(mat: Matrix4, vertecies: &mut Vec<Vertex>) {
     for mut tex in vertecies.iter_mut() {
         tex.position = mat4_mul_vec3(mat, tex.position);
+        tex.normal = mat4_mul_vec3(mat, tex.normal);
     }
-}
-
-fn make_cube_face(angle: Angle, x: f32, y: f32, z: f32, dir: Vector3) -> Vec<Vertex> {
-    let mut square = make_square(x,y,0.0);
-    transform_vertecies(mat4_rotate(angle, dir), &mut square);
-    transform_vertecies(mat4_translate([x,0.0,0.0]), &mut square);
-    square
 }
 
 fn make_cube(x: f32, y: f32, z: f32) -> Vec<Vertex> {
     let mut cube = vec![];
 
     let mut front = {
-        let mut square = make_square_centered(x,y);
+        let mut square = make_square(x,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         square
     };
 
+
     let mut left = {
-        let mut square = make_square_centered(z,y);
+        let mut square = make_square(z,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         transform_vertecies(mat4_rotate(Angle::Deg(90.0),[0.0,1.0,0.0]), &mut square);
         square
     };
 
     let mut right = {
-        let mut square = make_square_centered(z,y);
+        let mut square = make_square(z,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         transform_vertecies(mat4_rotate(Angle::Deg(-90.0),[0.0,1.0,0.0]), &mut square);
         square
     };
 
     let mut back = {
-        let mut square = make_square_centered(z,y);
+        let mut square = make_square(z,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         transform_vertecies(mat4_rotate(Angle::Deg(180.0),[0.0,1.0,0.0]), &mut square);
         square
@@ -90,14 +75,14 @@ fn make_cube(x: f32, y: f32, z: f32) -> Vec<Vertex> {
 
 
     let mut top = {
-        let mut square = make_square_centered(z,y);
+        let mut square = make_square(z,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         transform_vertecies(mat4_rotate(Angle::Deg(90.0),[1.0,0.0,0.0]), &mut square);
         square
     };
 
     let mut bottom = {
-        let mut square = make_square_centered(z,y);
+        let mut square = make_square(z,y);
         transform_vertecies(mat4_translate([0.0,0.0,z/2.0]), &mut square);
         transform_vertecies(mat4_rotate(Angle::Deg(-90.0),[1.0,0.0,0.0]), &mut square);
         square
@@ -113,18 +98,12 @@ fn make_cube(x: f32, y: f32, z: f32) -> Vec<Vertex> {
     cube
 }
 
-fn transpose_vertex(vert: &mut Vertex, amnt: Vector3) {
-    let mat = mat4_translate(amnt);
-
-    vert.position = mat4_mul_vec3(mat, vert.position);
-}
-
 // * Main function
 
 fn main() {
 
 // ** Init window and gl
-    implement_vertex!(Vertex, position, uvs);
+    implement_vertex!(Vertex, position, uvs, normal);
 
     let mut event_loop = glium::glutin::EventsLoop::new();
 
@@ -140,7 +119,13 @@ fn main() {
 
 
 // ** Make a shape
-    let mut shape = make_cube(1.0,1.0,1.0);
+    let shape = {
+        let mut shape = make_cube(1.0,1.0,1.0);
+        let mut shape2 = make_cube(0.5,0.5,0.5);
+        transform_vertecies(mat4_translate([-1.0,0.0,0.0]), &mut shape2);
+        shape.append(&mut shape2);
+        shape
+    };
 
     let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -160,16 +145,19 @@ fn main() {
 
 in vec3 position;
 in vec2 uvs;
+in vec3 normal;
 
 out vec2 v_uvs;
 
 out vec3 pos;
+out vec4 norm;
 
 uniform mat4 matrix;
 
 void main() {
     v_uvs = uvs;
     pos = position;
+    norm = vec4(normal,1.0);
     gl_Position = matrix * vec4(position, 1.0);
 }
 "#;
@@ -179,13 +167,14 @@ void main() {
 in vec2 v_uvs;
 
 in vec3 pos;
+in vec4 norm;
 
 out vec4 color;
 
 uniform sampler2D tex;
 
 void main() {
-    color = texture(tex, v_uvs) * vec4(pos, 1.0);
+    color = texture(tex, v_uvs) * norm;
 }
 
 "#;
@@ -200,14 +189,14 @@ void main() {
 
 // ** Render loop
     while ! closed {
-        t += 0.02;
+        t += 0.01;
         if t > 3.14159 * 2.0 {
             t = 0.0;
         }
 
         // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
         let mat = mat4_vec_mul(vec![
-            mat4_rotate(Angle::Rad(t), [0.0,1.0,0.0]),
+            mat4_rotate(Angle::Rad(t*2.0), [0.0,1.0,0.0]),
             mat4_rotate(Angle::Rad(t), [1.0,0.0,0.0]),
             mat4_scale([0.5,0.5,0.5]),
             // mat4_translate([-0.5,-0.5,0.0]),
