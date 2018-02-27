@@ -150,14 +150,14 @@ in vec3 normal;
 out vec2 v_uvs;
 
 out vec3 pos;
-out vec4 norm;
+out vec3 norm;
 
 uniform mat4 matrix;
 
 void main() {
     v_uvs = uvs;
     pos = position;
-    norm = vec4(normal,1.0);
+    norm = transpose(inverse(mat3(matrix))) * normal;
     gl_Position = matrix * vec4(position, 1.0);
 }
 "#;
@@ -167,14 +167,16 @@ void main() {
 in vec2 v_uvs;
 
 in vec3 pos;
-in vec4 norm;
+in vec3 norm;
 
 out vec4 color;
 
 uniform sampler2D tex;
+uniform vec3 light_pos;
 
 void main() {
-    color = texture(tex, v_uvs) * norm;
+    float brightness = dot(normalize(norm), normalize(light_pos));
+    color = texture(tex, v_uvs) * max(brightness,0.3);
 }
 
 "#;
@@ -204,6 +206,7 @@ void main() {
 
         let uniforms = uniform! {
             matrix: mat,
+            light_pos: [1.0,1.0,-1.0f32],
             tex: &texture
         };
         
@@ -216,6 +219,7 @@ void main() {
                 write: true,
                 .. Default::default()
             },
+            backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
             .. Default::default()
         };
                     
