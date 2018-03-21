@@ -111,8 +111,7 @@ fn main() {
         .with_dimensions(1024, 768)
         .with_title("Hello world!");
 
-    let context = glium::glutin::ContextBuilder::new()
-        .with_depth_buffer(24);
+    let context = glium::glutin::ContextBuilder::new().with_depth_buffer(24);
 
     let display = glium::Display::new(window, context, &event_loop).unwrap();
 
@@ -154,9 +153,12 @@ out vec3 norm;
 
 uniform mat4 matrix;
 
+out mat4 o_mat;
+
 void main() {
     v_uvs = uvs;
     pos = position;
+    o_mat = matrix;
     norm = transpose(inverse(mat3(matrix))) * normal;
     gl_Position = matrix * vec4(position, 1.0);
 }
@@ -169,6 +171,8 @@ in vec2 v_uvs;
 in vec3 pos;
 in vec3 norm;
 
+in mat4 o_mat;
+
 out vec4 color;
 
 uniform sampler2D tex;
@@ -176,7 +180,8 @@ uniform vec3 light_pos;
 
 void main() {
     float brightness = dot(normalize(norm), normalize(light_pos));
-    color = texture(tex, v_uvs) * max(brightness,0.3);
+    color = vec4(o_mat[0][0], o_mat[1][1], o_mat[2][2],1.0) * max(brightness,0.3);
+    color[3] = 1.0;
 }
 
 "#;
@@ -195,6 +200,8 @@ void main() {
         if t > 3.14159 * 2.0 {
             t = 0.0;
         }
+
+        // t = 2.5;
 
         // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
         let mat = mat4_vec_mul(vec![
@@ -222,7 +229,7 @@ void main() {
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
             .. Default::default()
         };
-                    
+        
         target.draw(&vertex_buffer, &indices, &program, &uniforms, &draw_params).unwrap();
 
         target.finish().unwrap();
