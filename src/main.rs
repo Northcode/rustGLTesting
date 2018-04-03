@@ -215,7 +215,7 @@ in vec3 normal;
 out vec2 v_uvs;
 
 out vec3 pos;
-out vec3 norm;
+out vec4 norm;
 
 uniform mat4 matrix;
 
@@ -234,7 +234,7 @@ void main() {
 in vec2 v_uvs;
 
 in vec3 pos;
-in vec3 norm;
+in vec4 norm;
 
 in mat4 o_mat;
 
