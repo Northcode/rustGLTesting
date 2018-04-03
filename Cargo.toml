@@ -6,7 +6,7 @@ authors = ["Andreas Larsen <andreas@northcode.no>"]
 [dependencies]
 glium = "*"
 image = "*"
-tobj = "0.1.6"
+tobj = "*"
 
 [dev-dependencies]
 quickcheck = "0.6"

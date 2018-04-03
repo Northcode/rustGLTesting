@@ -3,6 +3,8 @@ extern crate glium;
 
 extern crate image;
 
+extern crate tobj;
+
 mod linalg;
 
 use glium::{glutin,Surface};
@@ -11,11 +13,19 @@ use std::io::Cursor;
 use linalg::*;
 use linalg::matrix4::*;
 
+use std::path::Path;
+
 #[derive(Copy,Clone)]
 struct Vertex {
     position: Vector3,
     uvs: Vector2,
     normal: Vector3,
+}
+
+impl std::fmt::Debug for Vertex {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Vertex {{ position: {:?}, uvs: {:?}, normal: {:?}", self.position, self.uvs, self.normal)
+    }
 }
 
 // * Vertex making functions
@@ -36,9 +46,16 @@ fn make_square(x: f32, y: f32) -> Vec<Vertex> {
 
 
 fn transform_vertecies(mat: Matrix4, vertecies: &mut Vec<Vertex>) {
+    let notransmat = mat4_mul(mat, [
+        [1.0, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0, 1.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+
     for mut tex in vertecies.iter_mut() {
         tex.position = mat4_mul_vec3(mat, tex.position);
-        tex.normal = mat4_mul_vec3(mat, tex.normal);
+        tex.normal = mat4_mul_vec3(notransmat, tex.normal);
     }
 }
 
@@ -115,18 +132,67 @@ fn main() {
 
     let display = glium::Display::new(window, context, &event_loop).unwrap();
 
+// ** Load a cube
+    let mut vertex_data = Vec::new();
 
-
-// ** Make a shape
-    let shape = {
-        let mut shape = make_cube(1.0,1.0,1.0);
-        let mut shape2 = make_cube(0.5,0.5,0.5);
-        transform_vertecies(mat4_translate([-1.0,0.0,0.0]), &mut shape2);
-        shape.append(&mut shape2);
-        shape
+    match tobj::load_obj(Path::new("cube.obj")) {
+        Ok((models, mats)) => {
+            for model in &models {
+                let mesh = &model.mesh;
+                for idx in &mesh.indices {
+                    let i = *idx as usize;
+                    let pos = [
+                        mesh.positions[3 * i],
+                        mesh.positions[3 * i + 1],
+                        mesh.positions[3 * i + 2],
+                    ];
+                    let normal = if !mesh.normals.is_empty() {
+                        [
+                            mesh.normals[3 * i],
+                            mesh.normals[3 * i + 1],
+                            mesh.normals[3 * i + 2],
+                        ]
+                    } else {
+                        [0.0, 0.0, 0.0]
+                    };
+                    let uvs = if !mesh.texcoords.is_empty() {
+                        [
+                            mesh.texcoords[2 * i],
+                            mesh.texcoords[2 * i + 1],
+                        ]
+                    } else {
+                        [0.0,0.0]
+                    };
+                    vertex_data.push(Vertex {
+                        position: pos,
+                        uvs: uvs,
+                        normal: normal
+                    });
+                }
+            }
+        },
+        Err(e) => panic!("Failed to load model!"),
     };
 
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+    for ver in &vertex_data {
+        println!("{:?}", ver);
+    }
+
+// ** Make a shape
+    // let shape = {
+    //     let mut shape = make_cube(1.0,1.0,1.0);
+    //     let mut shape2 = make_cube(0.5,0.5,0.5);
+    //     transform_vertecies(mat4_translate([-1.0,0.0,0.0]), &mut shape2);
+    //     shape.append(&mut shape2);
+    //     shape
+    // };
+
+    // for ver in &shape {
+    //     println!("{:?}", ver);
+    // }
+    
+
+    let vertex_buffer = glium::VertexBuffer::new(&display, &vertex_data).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
 
@@ -158,8 +224,7 @@ out mat4 o_mat;
 void main() {
     v_uvs = uvs;
     pos = position;
-    o_mat = matrix;
-    norm = transpose(inverse(mat3(matrix))) * normal;
+    norm = normalize(matrix * vec4(normal,0.0));
     gl_Position = matrix * vec4(position, 1.0);
 }
 "#;
@@ -178,10 +243,13 @@ out vec4 color;
 uniform sampler2D tex;
 uniform vec3 light_pos;
 
+uniform vec4 diffuse_light_direction;
+uniform vec3 diffuse_light_color;
+uniform vec4 ambient_light;
+
 void main() {
-    float brightness = dot(normalize(norm), normalize(light_pos));
-    color = vec4(o_mat[0][0], o_mat[1][1], o_mat[2][2],1.0) * max(brightness,0.3);
-    color[3] = 1.0;
+    vec4 diffuse_light = max(dot(norm, diffuse_light_direction), 0.0) * vec4(diffuse_light_color,1.0);
+    color = texture(tex, v_uvs) * max(diffuse_light, ambient_light);
 }
 
 "#;
@@ -192,29 +260,46 @@ void main() {
 
     let mut closed = false;
 
-    let mut t : f32 = -0.5;
+    let mut t : f32 = 0.0;
+    let mut w : f32 = 0.0;
+
+    #[derive(Debug)]
+    struct KeyState {
+        w : bool,
+        a : bool,
+        s : bool,
+        d : bool
+    };
+
+    let mut keystate = KeyState { w: false, a: false, s: false, d: false };
 
 // ** Render loop
     while ! closed {
-        t += 0.01;
-        if t > 3.14159 * 2.0 {
-            t = 0.0;
-        }
+        // t += 0.01;
+        // if t > 3.14159 * 2.0 {
+        //     t = 0.0;
+        // }
 
         // t = 2.5;
 
         // let mat = mat4_rotate(Angle::Rad(t),[0.0,0.0,1.0]);
         let mat = mat4_vec_mul(vec![
-            mat4_rotate(Angle::Rad(t*2.0), [0.0,1.0,0.0]),
-            mat4_rotate(Angle::Rad(t), [1.0,0.0,0.0]),
+            mat4_translate([-0.5,-0.5,-0.5]),
+            mat4_rotate(Angle::Rad(t), [0.0,1.0,0.0]),
+            mat4_rotate(Angle::Rad(w), [1.0,0.0,0.0]),
             mat4_scale([0.5,0.5,0.5]),
-            // mat4_translate([-0.5,-0.5,0.0]),
         ]);
+
+        let light_ambient : [f32; 4] = [0.5, 0.3, 0.3, 1.0];
+        let light_diffuse_color : [f32; 3] = [1.0, 1.0, 1.0];
+        let light_diffuse_direction : [f32; 4] = [-1.0, 1.0, 0.0, 0.0];
 
         let uniforms = uniform! {
             matrix: mat,
-            light_pos: [1.0,1.0,-1.0f32],
-            tex: &texture
+            tex: &texture,
+            diffuse_light_direction: light_diffuse_direction,
+            diffuse_light_color: light_diffuse_color,
+            ambient_light: light_ambient,
         };
         
         let mut target = display.draw();
@@ -238,10 +323,35 @@ void main() {
             match ev {
                 glutin::Event::WindowEvent { event, .. } => match event {
                     glutin::WindowEvent::Closed => closed = true,
+                    glutin::WindowEvent::KeyboardInput { device_id, input } => {
+                        use glutin::VirtualKeyCode;
+                        use glutin::ElementState;
+                        let val = input.state == ElementState::Pressed;
+                        match input.virtual_keycode {
+                            Some(VirtualKeyCode::W) => keystate.w = val,
+                            Some(VirtualKeyCode::S) => keystate.s = val,
+                            Some(VirtualKeyCode::A) => keystate.a = val,
+                            Some(VirtualKeyCode::D) => keystate.d = val,
+                            _ => ()
+                        };
+                    }
                     _ => ()
                 },
                 _ => ()
             }
+
         });
+
+        if keystate.w {
+            w += 0.01;
+        } else if keystate.s {
+            w -= 0.01;
+        }
+        
+        if keystate.d {
+            t += 0.01;
+        } else if keystate.a {
+            t -= 0.01;
+        }
     }
 }
