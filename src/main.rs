@@ -174,9 +174,9 @@ fn main() {
         Err(e) => panic!("Failed to load model!"),
     };
 
-    for ver in &vertex_data {
-        println!("{:?}", ver);
-    }
+    // for ver in &vertex_data {
+    //     println!("{:?}", ver);
+    // }
 
 // ** Make a shape
     // let shape = {
@@ -263,6 +263,8 @@ void main() {
     let mut t : f32 = 0.0;
     let mut w : f32 = 0.0;
 
+    let speed = 0.05;
+
     #[derive(Debug)]
     struct KeyState {
         w : bool,
@@ -343,15 +345,15 @@ void main() {
         });
 
         if keystate.w {
-            w += 0.01;
+            w += speed;
         } else if keystate.s {
-            w -= 0.01;
+            w -= speed;
         }
         
         if keystate.d {
-            t += 0.01;
+            t += speed;
         } else if keystate.a {
-            t -= 0.01;
+            t -= speed;
         }
     }
 }
